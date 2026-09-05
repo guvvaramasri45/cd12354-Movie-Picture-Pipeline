@@ -14,7 +14,6 @@ jobs:
   lint:
     name: Lint Backend
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: starter/backend
@@ -40,7 +39,6 @@ jobs:
   test:
     name: Test Backend
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: starter/backend
@@ -95,7 +93,6 @@ jobs:
           docker build \
             --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             .
-
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   deploy:
@@ -115,10 +112,13 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Configure kubectl
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
         run: |
-          aws eks update-kubeconfig \
-            --region ${{ secrets.AWS_REGION }} \
-            --name ${{ secrets.EKS_CLUSTER_NAME }}
+          mkdir -p "$HOME/.kube"
+          echo "$KUBE_CONFIG_B64" | base64 --decode > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+          kubectl get nodes
 
       - name: Install Kustomize
         uses: imranismail/setup-kustomize@v2
