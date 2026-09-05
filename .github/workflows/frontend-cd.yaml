@@ -14,7 +14,6 @@ jobs:
   lint:
     name: Lint Frontend
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: starter/frontend
@@ -39,7 +38,6 @@ jobs:
   test:
     name: Test Frontend
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: starter/frontend
@@ -89,12 +87,12 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.FRONTEND_ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
+          MOVIE_API_URL: ${{ secrets.FRONTEND_MOVIE_API_URL }}
         run: |
           docker build \
-            --build-arg REACT_APP_MOVIE_API_URL=${{ secrets.FRONTEND_MOVIE_API_URL }} \
+            --build-arg REACT_APP_MOVIE_API_URL=$MOVIE_API_URL \
             --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             .
-
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   deploy:
@@ -114,10 +112,13 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Configure kubectl
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
         run: |
-          aws eks update-kubeconfig \
-            --region ${{ secrets.AWS_REGION }} \
-            --name ${{ secrets.EKS_CLUSTER_NAME }}
+          mkdir -p "$HOME/.kube"
+          echo "$KUBE_CONFIG_B64" | base64 --decode > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+          kubectl get nodes
 
       - name: Install Kustomize
         uses: imranismail/setup-kustomize@v2
