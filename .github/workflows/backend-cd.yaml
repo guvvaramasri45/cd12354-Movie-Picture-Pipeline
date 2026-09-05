@@ -7,7 +7,6 @@ on:
     paths:
       - 'starter/backend/**'
       - '.github/workflows/backend-cd.yaml'
-
   workflow_dispatch:
 
 jobs:
@@ -93,6 +92,7 @@ jobs:
           docker build \
             --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             .
+
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   deploy:
@@ -136,3 +136,23 @@ jobs:
         working-directory: starter/backend/k8s
         run: |
           kustomize build | kubectl apply -f -
+
+      - name: Verify Kubernetes deployment
+        run: |
+          kubectl rollout status deployment/backend --timeout=180s
+          echo "----- Logging - kubectl get all -----"
+          kubectl get all
+          echo "----- Logging - kubectl describe deployment backend -----"
+          kubectl describe deployment backend
+
+      - name: Verify Backend ECR image
+        env:
+          ECR_REPOSITORY: ${{ secrets.BACKEND_ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          echo "----- Logging - Backend ECR image -----"
+          AWS_PAGER="" aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --region "$AWS_REGION"
